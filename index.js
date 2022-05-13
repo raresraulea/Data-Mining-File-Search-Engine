@@ -1,6 +1,12 @@
-import { buildFileDetails, normalizeValue } from "./utils.js";
+import { buildFileDetails, getWordsWithOccurences, normalizeValue } from "./utils.js";
 
-const FILE_NAME_IDS = ["2504", "2538", "2775", "2792"];
+const FILE_NAME_IDS = ["2504", "2538", "2775", "2792",
+'2504', '2836', '2982', '3813', '4294', '5520', '5550',
+'2538', '2848', '2984', '3902', '5104', '5524', '5675',
+'2775', '2917', '2988', '4206', '5216', '5530', '5678',
+'2792', '2955', '3665', '4263', '5220', '5537', '5697',
+  '2822', '2978', '3785', '4289', '5229', '5541']
+
 export let dictionaryByFile = {};
 export let globalDictionary = {};
 export let localVectorsByFile = {};
@@ -8,9 +14,38 @@ export let normalizedLocalVectorsByFile = {};
 export let ITFByFile = {};
 export let inHowManyDocuments = {};
 
+const form = document.getElementById('query-form')
+const input = document.getElementById('query-input')
+const submitBtn = document.getElementById('query-submit-btn')
+
+submitBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  console.log(input.value)
+
+  const wordsWithOcurrences = getWordsWithOccurences(input.value);
+
+  dictionaryByFile[`QUERY`] = {
+    words: wordsWithOcurrences,
+    title: `QUERY`,
+    categories: []
+  };
+
+  console.log(dictionaryByFile)
+
+
+  console.time('app')
+  startApp();
+  console.timeEnd('app')
+
+  console.log({ITFByFile})
+})
+
 function buildDictionaryByFile() {
+  const promiseArray = []
   for (let fileNameId of FILE_NAME_IDS) 
-    buildFileDetails(fileNameId);
+    promiseArray.push(() => new Promise(() => buildFileDetails(fileNameId)));
+  
+  Promise.all(promiseArray.map(f => f()))
 }
 
 function startApp() {
@@ -28,7 +63,7 @@ function startApp() {
   const text = Object.entries(dictionaryByFile).reduce(
     (textToSave, [filename, { words }]) => {
       let innerTextToSave = "\n " + filename + " # ";
-      console.log("words", words);
+      // console.log("words", words);
 
       let localVectors = Array.from({length: globalDictionary.length}, (_) => 0)
 
@@ -46,7 +81,7 @@ function startApp() {
         }
 
         return `${idx}:${localVectors[idx]} `
-      }).join('')
+      })?.join('')
 
       localVectorsByFile[filename] = localVectors
 
@@ -70,22 +105,22 @@ function startApp() {
 
     let fileWords = Object.values(dictionaryByFile[filename].words);
 
-  //NU IAU cuvintele de unde trebuie (trebuie si cele care nu apar deloc)
-
     for (let word of Object.keys(inHowManyDocuments)) {
-      ITFVector.push(Math.log10(1.0*4/inHowManyDocuments[word]))
+      ITFVector.push(Math.log10(1.0*FILE_NAME_IDS.length/inHowManyDocuments[word]))
     }
+    ITFByFile[filename] = ITFVector
 
-    console.log({ITFVector})
+    // console.log({ITFVector})
 
   }
 
 
   console.log("TEXT \n \n", text);
   console.log("NORMALIZED LOCAL VECTORS BY FILE \n \n", normalizedLocalVectorsByFile);
-  console.log("HOW MANY DOCS \n \n", inHowManyDocuments);
+  // console.log("HOW MANY DOCS \n \n", inHowManyDocuments);
 
   console.log("DICTIONAR GLOBAL", globalDictionary);
   console.log("DETALII PER FISIER:", dictionaryByFile);
 }
-startApp();
+
+
